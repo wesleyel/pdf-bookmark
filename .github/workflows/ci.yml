@@ -27,15 +27,15 @@ jobs:
 
       - name: Build with Gradle (Windows)
         if: runner.os == 'Windows'
-        run: .\gradlew.bat build distZip --no-daemon
+        run: .\gradlew.bat build runtimeZip --no-daemon
 
       - name: Build with Gradle (Unix)
         if: runner.os != 'Windows'
-        run: ./gradlew build distZip --no-daemon
+        run: ./gradlew build runtimeZip --no-daemon
 
       - name: Upload distribution artifacts
         uses: actions/upload-artifact@v4
         with:
           name: pdf-bookmark-${{ runner.os }}
-          path: build/distributions/*.zip
+          path: build/image.zip
           retention-days: 30

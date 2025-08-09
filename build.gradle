@@ -2,7 +2,7 @@ plugins {
     id 'java'
     id 'application'
     id 'org.openjfx.javafxplugin' version '0.0.8'
-    id 'org.beryx.jlink' version '2.12.0'
+    id 'org.beryx.runtime' version '1.13.1'
 }
 group 'com.ifnoelse'
 version '1.0.7'
@@ -25,12 +25,9 @@ javafx {
     modules = [ 'javafx.controls' ]
 }
 
-jlink {
+runtime {
     launcher {
-        name = 'pdf-bookmark'
-    }
-    jlinkZip {
-        group = 'distribution'
+        noConsole = true
     }
 }
 
