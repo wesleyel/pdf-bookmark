@@ -15,8 +15,9 @@ sourceCompatibility = 11
 
 repositories {
     maven {
-        url "http://maven.aliyun.com/nexus/content/groups/public/"
+        url "https://maven.aliyun.com/nexus/content/groups/public/"
     }
+    mavenCentral()
 }
 
 javafx {
@@ -31,8 +32,8 @@ jlink {
 }
 
 dependencies {
-    testCompile group: 'junit', name: 'junit', version: '4.11'
-    compile group: 'org.jsoup', name: 'jsoup', version: '1.10.2'
-    compile group: 'com.itextpdf', name: 'itextpdf', version: '5.5.13'
-//    compile group: 'org.bouncycastle', name: 'bcprov-jdk16', version: '1.46'
+    testImplementation group: 'junit', name: 'junit', version: '4.11'
+    implementation group: 'org.jsoup', name: 'jsoup', version: '1.10.2'
+    implementation group: 'com.itextpdf', name: 'itextpdf', version: '5.5.13'
+//    implementation group: 'org.bouncycastle', name: 'bcprov-jdk16', version: '1.46'
 }
