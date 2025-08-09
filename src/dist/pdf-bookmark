@@ -1,0 +1,28 @@
+#!/bin/bash
+
+# PDF Bookmark Tool Launcher Script
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+LIB_DIR="$SCRIPT_DIR/lib"
+
+# Check if Java is available
+if ! command -v java &> /dev/null; then
+    echo "Error: Java is not installed or not in PATH"
+    echo "Please install Java 17 or later to run this application"
+    exit 1
+fi
+
+# Build classpath
+CLASSPATH=""
+for jar in "$LIB_DIR"/*.jar; do
+    if [ -f "$jar" ]; then
+        if [ -z "$CLASSPATH" ]; then
+            CLASSPATH="$jar"
+        else
+            CLASSPATH="$CLASSPATH:$jar"
+        fi
+    fi
+done
+
+# Run the application
+java -cp "$CLASSPATH" com.ifnoelse.pdf.gui.Main "$@"

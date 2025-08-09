@@ -57,12 +57,24 @@ public class PDFUtil {
         List<Bookmark> bookmarkList = new ArrayList<>();
         for (String ln : bookmarks) {
             ln = replaceBlank(ln);
-            ln = ln.replaceFirst("^\\s*\\*\\s*", ""); // Support "*1.1 ..." and "* 1.1 ..." patterns
-            if (ln.length() < minLens || ln.length() > maxLnes) continue;
-            Matcher matcher = bookmarkPattern.matcher(ln);
+            
+            // Check if line starts with asterisk pattern and preserve it
+            boolean hasAsteriskPrefix = ln.matches("^\\s*\\*\\s*.*");
+            
+            // Remove asterisk prefix for parsing, but keep track of it
+            String cleanedLine = ln.replaceFirst("^\\s*\\*\\s*", "");
+            
+            if (cleanedLine.length() < minLens || cleanedLine.length() > maxLnes) continue;
+            Matcher matcher = bookmarkPattern.matcher(cleanedLine);
             if (matcher.find()) {
                 String seq = matcher.group(1);
                 String title = replaceBlank(matcher.group(2));
+                
+                // If there was an asterisk prefix, prepend "* " to the title
+                if (hasAsteriskPrefix) {
+                    title = "* " + title;
+                }
+                
                 int pageIndex = Integer.parseInt(matcher.group(3));
                 if (seq != null && bookmarkList.size() > 0) {
                     Bookmark pre = bookmarkList.get(bookmarkList.size() - 1);

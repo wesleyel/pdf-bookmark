@@ -29,11 +29,26 @@ jlink {
     launcher {
         name = 'pdf-bookmark'
     }
+    jlinkZip {
+        group = 'distribution'
+    }
 }
 
 dependencies {
-    testImplementation group: 'junit', name: 'junit', version: '4.11'
+    testImplementation group: 'junit', name: 'junit', version: '4.13.2'
     implementation group: 'org.jsoup', name: 'jsoup', version: '1.10.2'
     implementation group: 'com.itextpdf', name: 'itextpdf', version: '5.5.13'
 //    implementation group: 'org.bouncycastle', name: 'bcprov-jdk16', version: '1.46'
+}
+
+tasks.register('manualTest', JavaExec) {
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'test.ManualTest'
+}
+
+// Add this to handle the testCompile configuration issue
+configurations {
+    testCompile {
+        extendsFrom testImplementation
+    }
 }
