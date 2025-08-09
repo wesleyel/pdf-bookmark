@@ -57,6 +57,7 @@ public class PDFUtil {
         List<Bookmark> bookmarkList = new ArrayList<>();
         for (String ln : bookmarks) {
             ln = replaceBlank(ln);
+            ln = ln.replaceFirst("^\\s*\\*\\s*", ""); // Support "*1.1 ..." and "* 1.1 ..." patterns
             if (ln.length() < minLens || ln.length() > maxLnes) continue;
             Matcher matcher = bookmarkPattern.matcher(ln);
             if (matcher.find()) {
