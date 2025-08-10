@@ -4,8 +4,12 @@ import asyncio
 import threading
 import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
+from tkinter import font as tkfont
 from pathlib import Path
 from typing import Optional
+import platform
+import subprocess
+import os
 
 from .core import generate_bookmarks, parse_toc_lines
 
@@ -32,6 +36,11 @@ class App:
         frm = ttk.Frame(self.root, padding=10)
         frm.pack(fill=tk.BOTH, expand=True)
 
+        # Prominent primary action
+        style = ttk.Style(self.root)
+        big_font = tkfont.Font(size=12, weight="bold")
+        style.configure("Primary.TButton", font=big_font, padding=(10, 12))
+
         # Input selector
         in_row = ttk.Frame(frm)
         in_row.pack(fill=tk.X)
@@ -49,6 +58,7 @@ class App:
         self.out_entry = ttk.Entry(out_row, textvariable=self.out_var)
         self.out_entry.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=6)
         ttk.Button(out_row, text="Browse", command=self.choose_output).pack(side=tk.LEFT)
+        ttk.Button(out_row, text="Open Folder", command=self.open_output_folder).pack(side=tk.LEFT, padx=(6, 0))
 
         # Offset + Controls
         ctrl = ttk.Frame(frm)
@@ -57,7 +67,6 @@ class App:
         self.offset_var = tk.StringVar(value="0")
         self.offset_entry = ttk.Entry(ctrl, textvariable=self.offset_var, width=6)
         self.offset_entry.pack(side=tk.LEFT, padx=(4, 12))
-        ttk.Button(ctrl, text="Generate", command=self._on_generate).pack(side=tk.LEFT, padx=8)
 
         # TOC input
         toc_row = ttk.Frame(frm)
@@ -81,6 +90,10 @@ class App:
         self.tree.heading("level", text="Level")
         self.tree.column("title", width=160)
         self.tree.pack(fill=tk.BOTH, expand=True)
+
+        ttk.Button(frm, text="Generate", command=self._on_generate, style="Primary.TButton").pack(
+            fill=tk.X, pady=(0, 10)
+        )
 
         self.status_var = tk.StringVar(value="Ready")
         ttk.Label(frm, textvariable=self.status_var).pack(anchor=tk.W, pady=(8, 0))
@@ -107,10 +120,33 @@ class App:
             self.input_path = Path(path)
             self.in_var.set(path)
             if not self.out_var.get():
-                self.out_var.set(str(self.input_path.with_suffix(".bookmarked.pdf")))
+                # Default output to Downloads directory with suffixed name
+                downloads = self._get_downloads_dir()
+                default_out = downloads / f"{self.input_path.stem}.bookmarked.pdf"
+                self.output_path = default_out
+                self.out_var.set(str(default_out))
 
     def choose_output(self) -> None:
-        path = filedialog.asksaveasfilename(defaultextension=".pdf", filetypes=[("PDF", "*.pdf")])
+        # Suggest Downloads as default directory, and a sensible default filename
+        downloads = self._get_downloads_dir()
+        initialdir = str(downloads)
+        initialfile = ""
+        if self.input_path:
+            initialfile = f"{self.input_path.stem}.bookmarked.pdf"
+        elif self.out_var.get():
+            try:
+                p = Path(self.out_var.get())
+                initialdir = str(p.parent)
+                initialfile = p.name
+            except Exception:
+                pass
+
+        path = filedialog.asksaveasfilename(
+            defaultextension=".pdf",
+            filetypes=[("PDF", "*.pdf")],
+            initialdir=initialdir,
+            initialfile=initialfile,
+        )
         if path:
             self.output_path = Path(path)
             self.out_var.set(path)
@@ -172,6 +208,41 @@ class App:
         asyncio.run_coroutine_threadsafe(task(), self.loop)
 
     # URL fetch removed: manual TOC input only
+
+    def _get_downloads_dir(self) -> Path:
+        """Return the user's Downloads directory, fallback to home if missing."""
+        downloads = Path.home() / "Downloads"
+        return downloads if downloads.exists() else Path.home()
+
+    def open_output_folder(self) -> None:
+        """Open the output directory in the system file manager.
+
+        If an explicit output path is set, opens its parent directory;
+        otherwise opens the Downloads directory.
+        """
+        target_dir: Path
+        try:
+            if self.out_var.get():
+                target_dir = Path(self.out_var.get()).expanduser().resolve().parent
+            else:
+                target_dir = self._get_downloads_dir()
+        except Exception:
+            target_dir = self._get_downloads_dir()
+
+        if not target_dir.exists():
+            messagebox.showwarning("Missing", f"Directory does not exist: {target_dir}")
+            return
+
+        system = platform.system().lower()
+        try:
+            if system == "windows":
+                os.startfile(str(target_dir))  # type: ignore[attr-defined]
+            elif system == "darwin":
+                subprocess.run(["open", str(target_dir)], check=False)
+            else:
+                subprocess.run(["xdg-open", str(target_dir)], check=False)
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed to open folder: {e}")
 
 
 def main() -> None:  # pragma: no cover

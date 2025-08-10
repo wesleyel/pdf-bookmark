@@ -14,3 +14,4 @@ htmlcov/
 # build
 build/
 dist/
+input/
