@@ -1,0 +1,47 @@
+[project]
+name = "pdf-bookmark"
+version = "0.1.0"
+description = "Create PDF bookmarks automatically using heuristics, with CLI and async tkinter GUI"
+authors = [{ name = "Wesley Yang", email = "yxnian@outlook.com" }]
+urls = { Homepage = "https://github.com/wesleyel/pdf-bookmark", Source = "https://github.com/wesleyel/pdf-bookmark" }
+readme = "README.md"
+requires-python = ">=3.9"
+license = { file = "LICENSE" }
+
+dependencies = [
+  "pypdf>=4.2.0",
+  "tomli>=2.0.1; python_version < '3.11'",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.2",
+  "pytest-cov>=5.0",
+  "ruff>=0.5.0",
+  "mypy>=1.10.0",
+]
+
+[project.scripts]
+pdf-bookmark = "pdf_bookmark.cli:main"
+pdf-bookmark-gui = "pdf_bookmark.gui:main"
+
+[tool.uv]
+package = true
+
+[tool.pytest.ini_options]
+addopts = "-q"
+pythonpath = ["."]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["pdf_bookmark*"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py39"
+
+[tool.mypy]
+python_version = "3.9"
+strict = false
+warn_unused_ignores = true
+ignore_missing_imports = true

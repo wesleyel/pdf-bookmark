@@ -1,0 +1,17 @@
+# Python/uv
+.venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+__pycache__/
+.coverage
+htmlcov/
+*.egg-info/
+
+# Build artifacts
+*.pdf
+
+# build
+build/
+dist/
+input/
