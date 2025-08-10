@@ -27,15 +27,35 @@ jobs:
 
       - name: Build with Gradle (Windows)
         if: runner.os == 'Windows'
-        run: .\gradlew.bat build runtimeZip --no-daemon
+        run: .\gradlew.bat clean build runtime runtimeZip --no-daemon
 
       - name: Build with Gradle (Unix)
         if: runner.os != 'Windows'
-        run: ./gradlew build runtimeZip --no-daemon
+        run: ./gradlew clean build runtime runtimeZip --no-daemon
+
+      - name: Compute platform tag
+        id: plat
+        shell: bash
+        run: |
+          OS_TAG=$(echo "${{ runner.os }}" | tr '[:upper:]' '[:lower:]')
+          case "$OS_TAG" in
+            windows) OS_TAG=windows ;;
+            macos)   OS_TAG=macos ;;
+            ubuntu)  OS_TAG=linux ;;
+          esac
+          ARCH_TAG=$(uname -m)
+          case "$ARCH_TAG" in
+            x86_64) ARCH_TAG=x64 ;;
+            amd64)  ARCH_TAG=x64 ;;
+            aarch64) ARCH_TAG=arm64 ;;
+          esac
+          echo "tag=${OS_TAG}-${ARCH_TAG}" >> $GITHUB_OUTPUT
 
       - name: Upload distribution artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: pdf-bookmark-${{ runner.os }}
-          path: build/image.zip
+          name: pdf-bookmark-${{ steps.plat.outputs.tag }}
+          path: |
+            build/distributions/pdf-bookmark-*-${{ steps.plat.outputs.tag }}.zip
+            build/pdf-bookmark-${{ steps.plat.outputs.tag }}/**
           retention-days: 30

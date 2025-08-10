@@ -26,8 +26,32 @@ javafx {
 }
 
 runtime {
+    // Compute platform tag like linux-x64 / macos-x64 / windows-x64
+    def os = org.gradle.internal.os.OperatingSystem.current()
+    def archProp = System.getProperty("os.arch").toLowerCase()
+    def archTag = (archProp.contains("aarch") || archProp.contains("arm")) ? "arm64" : (archProp.contains("64") ? "x64" : archProp)
+    def osTag = os.isWindows() ? "windows" : (os.isMacOsX() ? "macos" : "linux")
+    def platformTag = "${osTag}-${archTag}"
+
+    // Name the image folder and zip artifact with platform tag
+    imageDir = file("${buildDir}/${project.name}-${platformTag}")
+    imageZip = file("${buildDir}/distributions/${project.name}-${project.version}-${platformTag}.zip")
+
+    // jlink optimization options
+    options = ['--strip-debug', '--no-header-files', '--no-man-pages', '--compress', '2']
+
     launcher {
         noConsole = true
+        // Ensure consistent encoding and JavaFX on macOS main thread
+        def jvmArgsList = ['-Dfile.encoding=UTF-8']
+        if (os.isMacOsX()) {
+            jvmArgsList += ['-XstartOnFirstThread']
+        }
+        // On some Linux/Wayland setups JavaFX works better with X11 backend; allow override by env
+        if (os.isLinux() && System.getenv('GDK_BACKEND') == null) {
+            jvmArgsList += ['-DGDK_BACKEND=x11']
+        }
+        jvmArgs = jvmArgsList
     }
 }
 
@@ -49,3 +73,85 @@ configurations {
         extendsFrom testImplementation
     }
 }
+
+// Post-process generated launcher scripts to ensure environment is set up
+tasks.register('tuneLauncherScripts') {
+    group = 'build'
+    description = 'Tune generated launcher scripts with environment exports (JAVA_HOME, PATH, UTF-8, Wayland fallback).'
+    doLast {
+        def buildDirFile = file(buildDir)
+        def imageDirs = buildDirFile.listFiles()?.findAll { it.isDirectory() && it.name.startsWith("${project.name}-") && new File(it, 'bin/pdf-bookmark').exists() } ?: []
+        def scriptDirs = [file("${buildDir}/scripts")] // also adjust helper scripts
+
+        def processSh = { File shFile ->
+            if (!shFile.exists()) return
+            def text = shFile.getText('UTF-8')
+            if (text.contains('# Runtime environment (auto-added)')) return
+            def injection = '''
+
+# Runtime environment (auto-added)
+export JAVA_HOME="$APP_HOME"
+export PATH="$JAVA_HOME/bin:$PATH"
+# Ensure UTF-8 locale if not set
+if [ -z "${LANG:-}" ] || ! printf '%s' "$LANG" | grep -qi 'utf-8'; then
+  export LANG=C.UTF-8
+  export LC_ALL=C.UTF-8
+fi
+# Wayland fallback for JavaFX unless user overrides
+if [ -z "${GDK_BACKEND:-}" ] && [ "${XDG_SESSION_TYPE:-}" = "wayland" ]; then
+  export GDK_BACKEND=x11
+fi
+'''
+            // Inject after JAVACMD definition for stability (pure string match to avoid Groovy interpolation)
+            def marker = 'JAVACMD="$JAVA_HOME/bin/java"'
+            def idx = text.indexOf(marker)
+            if (idx >= 0) {
+                def before = text.substring(0, idx + marker.length())
+                def after = text.substring(idx + marker.length())
+                text = before + injection + after
+            } else {
+                // Fallback: append to the beginning if marker not found
+                text = injection + text
+            }
+            shFile.write(text, 'UTF-8')
+            shFile.setExecutable(true)
+        }
+
+        def processBat = { File batFile ->
+            if (!batFile.exists()) return
+            def text = batFile.getText('UTF-8')
+            if (text.contains('REM Runtime environment (auto-added)')) return
+            def injection = """
+
+REM Runtime environment (auto-added)
+set "JAVA_HOME=%APP_HOME%"
+set "PATH=%JAVA_HOME%\\bin;%PATH%"
+"""
+            // Inject after JAVA_EXE setup using plain string match
+            def marker = 'set JAVA_EXE=%JAVA_HOME%/bin/java.exe'
+            def idx = text.indexOf(marker)
+            if (idx >= 0) {
+                def before = text.substring(0, idx + marker.length())
+                def after = text.substring(idx + marker.length())
+                text = before + injection + after
+            } else {
+                text = injection + text
+            }
+            batFile.write(text, 'UTF-8')
+        }
+
+        // Process image scripts
+        imageDirs.each { dir ->
+            processSh(new File(dir, 'bin/pdf-bookmark'))
+            processBat(new File(dir, 'bin/pdf-bookmark.bat'))
+        }
+        // Process build/scripts templates
+        scriptDirs.each { sdir ->
+            processSh(new File(sdir, 'pdf-bookmark'))
+            processBat(new File(sdir, 'pdf-bookmark.bat'))
+        }
+    }
+}
+
+// Ensure tuning runs after creating the image
+tasks.named('runtime') { finalizedBy tasks.named('tuneLauncherScripts') }
