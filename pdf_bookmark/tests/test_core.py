@@ -135,3 +135,29 @@ def test_batch_config_custom_format(tmp_path: Path, monkeypatch):
     assert captured["src"].resolve() == input_pdf.resolve()
     assert captured["out"].resolve() == (output_dir / "book1.bookmarked.pdf").resolve()
     assert len(captured["headings"]) == 2
+
+
+def test_parse_toc_lines_preserve_numbering_prefix_in_title():
+    toc = "\n".join([
+        "第1章 计算机系统概述 1",
+        "1.1 操作系统的基本概念 2",
+        "2 其他章节 10",
+    ])
+    hs = parse_toc_lines(toc, page_offset=0)
+    titles = [h.title for h in hs]
+    # Ensure numbering like "第1章" and "1.1" are preserved in the final title
+    assert any(t.startswith("第1章 ") and "计算机系统概述" in t for t in titles)
+    assert any(t.startswith("1.1 ") and "操作系统的基本概念" in t for t in titles)
+    assert any(t.startswith("2 ") and "其他章节" in t for t in titles)
+
+
+def test_parse_toc_lines_preserve_numbering_with_asterisk():
+    toc = "\n".join([
+        "*1.1 星标小节 12",
+        "* 2 星标章节 13",
+    ])
+    hs = parse_toc_lines(toc, page_offset=0)
+    titles = [h.title for h in hs]
+    # Star prefix should precede the numbering, and numbering should remain
+    assert any(t.startswith("*1.1 ") and "星标小节" in t for t in titles)
+    assert any(t.startswith("*2 ") and "星标章节" in t for t in titles)

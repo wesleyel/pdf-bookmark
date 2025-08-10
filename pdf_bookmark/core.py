@@ -76,7 +76,8 @@ def parse_toc_lines(toc_text: str, page_offset: int = 0, min_len: int = 1) -> Li
         if m_star:
             stars = m_star.group(0)
             star_count = stars.count("*")
-            star_prefix = ("*" * star_count) + " "
+            # Preserve star(s) without trailing space; spacing will be normalized later
+            star_prefix = ("*" * star_count)
             line = line[m_star.end() :].lstrip()
 
         # Extract trailing page digits
@@ -93,13 +94,19 @@ def parse_toc_lines(toc_text: str, page_offset: int = 0, min_len: int = 1) -> Li
         if num_m:
             numbering = num_m.group("num")
             title_part = line_wo_page[num_m.end() :].strip()
-        # Cleanup title
-        title = re.sub(r"\s+", " ", title_part)
+        # Build title while preserving numbering prefix (e.g., "第1章" or "1.1")
+        if numbering:
+            combined = f"{numbering.strip()} {title_part}".strip()
+        else:
+            combined = title_part
+        # Cleanup whitespace
+        title = re.sub(r"\s+", " ", combined)
         if not title:
             # fallback to raw without numbering
             title = line_wo_page.strip()
         # Restore asterisk prefix if present
         if star_prefix:
+            # No space between star(s) and numbering/title
             title = f"{star_prefix}{title}".strip()
         level = _infer_level_from_numbering(numbering)
         pdf_page = max(1, page_num + page_offset)
