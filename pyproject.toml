@@ -29,7 +29,7 @@ package = true
 
 [tool.pytest.ini_options]
 addopts = "-q"
-pythonpath = ["src/python"]
+pythonpath = ["."]
 
 [tool.ruff]
 line-length = 100
