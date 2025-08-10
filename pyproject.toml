@@ -1,8 +1,9 @@
 [project]
 name = "pdf-bookmark"
-version = "0.1.0"
+version = "0.1.1"
 description = "Create PDF bookmarks automatically using heuristics, with CLI and async tkinter GUI"
-authors = [{ name = "Refactor Bot" }]
+authors = [{ name = "Wesley Yang", email = "yxnian@outlook.com" }]
+urls = { Homepage = "https://github.com/wesleyel/pdf-bookmark", Source = "https://github.com/wesleyel/pdf-bookmark" }
 readme = "README.md"
 requires-python = ">=3.9"
 license = { file = "LICENSE" }
