@@ -4,6 +4,8 @@ import re
 import pytest
 
 from pdf_bookmark.core import Heading, generate_bookmarks, parse_toc_lines
+from pdf_bookmark import cli
+import textwrap
 
 
 @pytest.fixture()
@@ -79,3 +81,57 @@ def test_parse_toc_lines_preserve_asterisk_prefix():
     assert titles[0].startswith("*") and "subdirectory" in titles[0]
     assert titles[1].startswith("*") and "another subdirectory" in titles[1]
     assert not titles[2].startswith("*")
+
+
+def test_batch_config_custom_format(tmp_path: Path, monkeypatch):
+    # Arrange input/output structure
+    input_dir = tmp_path / "input"
+    output_dir = tmp_path / "output"
+    input_pdf = input_dir / "book1.pdf"
+    input_dir.mkdir(parents=True, exist_ok=True)
+    # Create a tiny but valid one-page PDF for reading
+    from pypdf import PdfWriter
+    writer = PdfWriter()
+    writer.add_blank_page(width=100, height=100)
+    with input_pdf.open("wb") as f:
+        writer.write(f)
+
+    config_text = textwrap.dedent('''
+        [defaults]
+        page_offset = 1
+        min_len = 1
+        input_prefix = "input"
+        output_prefix = "output"
+        output_suffix = ".bookmarked.pdf"
+
+        [[tasks]]
+        input_file = "book1.pdf"
+        toc = """
+        第一章 绪论 1
+        1.1 引言 2
+        """
+        page_offset = 2
+        min_len = 1
+        ''').strip()
+
+    config_path = tmp_path / "config.toml"
+    config_path.write_text(config_text, encoding="utf-8")
+
+    # Capture calls to generate_bookmarks
+    captured = {}
+
+    def fake_generate(src: str, out: str, headings):
+        captured["src"] = Path(src)
+        captured["out"] = Path(out)
+        captured["headings"] = list(headings)
+
+    monkeypatch.setattr(cli, "generate_bookmarks", fake_generate)
+
+    # Act
+    code = cli._run_batch(config_path)
+
+    # Assert
+    assert code == 0
+    assert captured["src"].resolve() == input_pdf.resolve()
+    assert captured["out"].resolve() == (output_dir / "book1.bookmarked.pdf").resolve()
+    assert len(captured["headings"]) == 2

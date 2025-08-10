@@ -71,6 +71,49 @@ pdf-bookmark input.pdf -o output.pdf
 pdf-bookmark input.pdf --toc-file toc.txt --min-len 2
 ```
 
+### 通过 TOML 批量执行（自定义格式）
+支持通过 TOML 配置批量执行多个任务。相对路径均以配置文件所在目录为基准；还可以通过 `defaults.input_prefix` 与 `defaults.output_prefix` 设定输入/输出根目录。
+
+示例 `config.toml`：
+
+```toml
+[defaults]
+# global page offset
+page_offset = 0
+# global minimum length
+min_len = 3
+
+# input folder
+input_prefix = "input"
+# output folder
+output_prefix = "output"
+# output file name append
+output_suffix = ".bookmarked.pdf"
+
+[[tasks]]
+# input file name. relative to input_prefix
+input_file = "book1.pdf"
+toc = """
+第一章 绪论 1
+1.1 引言 3
+1.2 数学分析的基本概念 5
+"""
+page_offset = 10
+min_len = 2
+```
+
+运行：
+
+```bash
+pdf-bookmark --config config.toml
+```
+
+说明：
+- `defaults` 中的 `page_offset`、`min_len` 可被每个任务覆盖。
+- `input_prefix` 用于解析任务中的 `input_file`；`output_prefix` 为输出目录根。
+- 输出文件名为 `{stem}{output_suffix}`，其中 `stem` 来源于 `input_file`。
+- 任务可直接内联 `toc` 文本；也兼容 `toc_file` 指定外部文件。
+
 ## 图形界面（GUI）
 提供一个基于 Tk 的简易界面，便于在桌面环境下操作：
 ```bash

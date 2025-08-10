@@ -9,6 +9,7 @@ license = { file = "LICENSE" }
 
 dependencies = [
   "pypdf>=4.2.0",
+  "tomli>=2.0.1; python_version < '3.11'",
 ]
 
 [project.optional-dependencies]
@@ -29,6 +30,10 @@ package = true
 [tool.pytest.ini_options]
 addopts = "-q"
 pythonpath = ["."]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["pdf_bookmark*"]
 
 [tool.ruff]
 line-length = 100
