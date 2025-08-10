@@ -23,7 +23,7 @@ async def run_in_thread(func, *args, **kwargs):
 class App:
     def __init__(self, root: tk.Tk) -> None:
         self.root = root
-        self.root.title("PDF Bookmark")
+        self.root.title("TocSmith")
         self.root.geometry("820x640")
 
         self.input_path: Optional[Path] = None
@@ -249,3 +249,5 @@ def main() -> None:  # pragma: no cover
     root = tk.Tk()
     App(root)
     root.mainloop()
+
+

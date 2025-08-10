@@ -3,8 +3,8 @@ import re
 
 import pytest
 
-from pdf_bookmark.core import Heading, generate_bookmarks, parse_toc_lines
-from pdf_bookmark import cli
+from tocsmith.core import Heading, generate_bookmarks, parse_toc_lines
+from tocsmith import cli
 import textwrap
 
 
@@ -161,3 +161,5 @@ def test_parse_toc_lines_preserve_numbering_with_asterisk():
     # Star prefix should precede the numbering, and numbering should remain
     assert any(t.startswith("*1.1 ") and "星标小节" in t for t in titles)
     assert any(t.startswith("*2 ") and "星标章节" in t for t in titles)
+
+

@@ -1,4 +1,4 @@
-# pdf-bookmark
+# TocSmith
 
 为 PDF 添加目录书签的实用工具，支持命令行与简易 GUI。通过“手动粘贴目录文本 + 页码偏移”的方式生成 PDF 书签（大纲/Outline）。
 
@@ -21,19 +21,19 @@
 
 1) 通过uv安装命令行工具（推荐）：
 ```bash
-uv tool install pdf-bookmark
+uv tool install tocsmith
 # 安装后可直接使用：
-pdf-bookmark --help
-pdf-bookmark-gui
+tocsmith --help
+tocsmith-gui
 ```
 
 2) 使用 pip 安装（备选）：
 ```bash
-pip install pdf-bookmark
+pip install tocsmith
 
 # 现在可直接使用：
-pdf-bookmark --help
-pdf-bookmark-gui
+tocsmith --help
+tocsmith-gui
 ```
 
 3) 本地开发
@@ -44,14 +44,14 @@ uv sync
 
 uv tool install . --reinstall
 
-pdf-bookmark --help
-pdf-bookmark-gui
+tocsmith --help
+tocsmith-gui
 ```
 
 ## 命令行使用（CLI）
 
 ```bash
-pdf-bookmark --help
+tocsmith --help
 ```
 
 ### 通过 TOML 批量执行（自定义格式）
@@ -88,7 +88,7 @@ min_len = 2
 运行：
 
 ```bash
-pdf-bookmark --config config.toml
+tocsmith --config config.toml
 ```
 
 说明：
@@ -100,9 +100,9 @@ pdf-bookmark --config config.toml
 ## 图形界面（GUI）
 提供一个基于 Tk 的简易界面，便于在桌面环境下操作：
 ```bash
-pdf-bookmark-gui
+tocsmith-gui
 # 或
-uv run python -m pdf_bookmark.gui
+uv run python -m tocsmith.gui
 ```
 基本流程：
 - 选择输入 PDF
@@ -121,12 +121,12 @@ uv tool install .  # 安装命令，便于本地手动验证
 uv run pytest -q
 # 可选：
 uv run ruff check
-uv run mypy pdf_bookmark
+uv run mypy tocsmith
 ```
 
 - 项目结构：
 ```
-pdf_bookmark/
+tocsmith/
   core.py   # 目录解析与书签生成核心逻辑
   cli.py    # 命令行入口
   gui.py    # Tk GUI 入口

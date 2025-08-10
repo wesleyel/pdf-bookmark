@@ -1,5 +1,5 @@
 [project]
-name = "pdf-bookmark"
+name = "tocsmith"
 version = "0.1.0"
 description = "Create PDF bookmarks automatically using heuristics, with CLI and async tkinter GUI"
 authors = [{ name = "Wesley Yang", email = "yxnian@outlook.com" }]
@@ -22,8 +22,8 @@ dev = [
 ]
 
 [project.scripts]
-pdf-bookmark = "pdf_bookmark.cli:main"
-pdf-bookmark-gui = "pdf_bookmark.gui:main"
+tocsmith = "tocsmith.cli:main"
+tocsmith-gui = "tocsmith.gui:main"
 
 [tool.uv]
 package = true
@@ -34,7 +34,7 @@ pythonpath = ["."]
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["pdf_bookmark*"]
+include = ["tocsmith*"]
 
 [tool.ruff]
 line-length = 100

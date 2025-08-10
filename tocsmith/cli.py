@@ -17,7 +17,7 @@ except ModuleNotFoundError:  # Python 3.9-3.10
 
 
 def parse_args(argv: List[str] | None = None) -> argparse.Namespace:
-    p = argparse.ArgumentParser(prog="pdf-bookmark", description="Auto add bookmarks to PDF")
+    p = argparse.ArgumentParser(prog="tocsmith", description="Auto add bookmarks to PDF")
     p.add_argument("pdf", nargs="?", help="Input PDF path")
     p.add_argument("-o", "--out", help="Output PDF path; default: <name>.bookmarked.pdf")
     p.add_argument("--min-len", type=int, default=3, help="Minimum heading text length")
@@ -191,3 +191,5 @@ def main(argv: List[str] | None = None) -> int:
 
 if __name__ == "__main__":  # pragma: no cover
     raise SystemExit(main())
+
+

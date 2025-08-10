@@ -76,15 +76,15 @@ jobs:
       - name: Build CLI
         shell: bash
         run: |
-          pyinstaller -F -n pdf-bookmark pdf_bookmark/cli.py
+          pyinstaller -F -n tocsmith tocsmith/cli.py
       - name: Build GUI
         shell: bash
         run: |
-          pyinstaller -F -n pdf-bookmark-gui pdf_bookmark/gui.py
+          pyinstaller -F -n tocsmith-gui tocsmith/gui.py
       - name: Upload binaries
         uses: actions/upload-artifact@v4
         with:
           name: ${{ runner.os }}-binaries
           path: |
-            dist/pdf-bookmark*
+            dist/tocsmith*
 
