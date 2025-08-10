@@ -1,6 +1,7 @@
 __all__ = [
-    "analyze_pdf_headings",
+    "Heading",
+    "parse_toc_lines",
     "generate_bookmarks",
 ]
 
-from .core import analyze_pdf_headings, generate_bookmarks  # noqa: E402
+from .core import Heading, parse_toc_lines, generate_bookmarks  # noqa: E402

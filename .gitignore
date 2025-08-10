@@ -9,4 +9,8 @@ htmlcov/
 *.egg-info/
 
 # Build artifacts
-*.bookmarked.pdf
+*.pdf
+
+# build
+build/
+dist/

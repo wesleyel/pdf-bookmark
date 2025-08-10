@@ -9,7 +9,6 @@ license = { file = "LICENSE" }
 
 dependencies = [
   "pypdf>=4.2.0",
-  "pdfminer.six>=20231228",
 ]
 
 [project.optional-dependencies]

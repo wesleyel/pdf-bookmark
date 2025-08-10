@@ -1,10 +1,9 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Iterable, List, Tuple
+import re
+from typing import Iterable, List, Tuple, Optional
 
-from pdfminer.high_level import extract_pages
-from pdfminer.layout import LTTextContainer, LTTextBoxHorizontal, LTChar
 from pypdf import PdfReader, PdfWriter
 
 
@@ -13,80 +12,6 @@ class Heading:
     title: str
     page: int  # 1-based
     level: int  # 1..6
-
-
-def _iter_text_boxes(layout) -> Iterable[LTTextBoxHorizontal]:
-    for element in layout:
-        if isinstance(element, LTTextBoxHorizontal):
-            yield element
-        # pdfminer can nest containers; recurse if needed (rare for text boxes)
-        if isinstance(element, LTTextContainer):
-            for child in getattr(element, "_objs", []):
-                if isinstance(child, LTTextBoxHorizontal):
-                    yield child
-
-
-def analyze_pdf_headings(pdf_path: str, min_len: int = 3) -> List[Heading]:
-    """
-    Heuristically detect headings by font size and position.
-    - Larger average character size => higher-level heading
-    - Near top region of page boosts confidence
-    - Single-line and short text favored
-    Returns a sorted list of Heading(title, page, level)
-    """
-    headings: List[Heading] = []
-
-    sizes: List[float] = []
-    candidates: List[Tuple[int, str, float, float]] = []  # (page, text, avg_size, y_top)
-
-    for page_no, layout in enumerate(extract_pages(pdf_path), start=1):
-        for box in _iter_text_boxes(layout):
-            text = box.get_text().strip()
-            if not text:
-                continue
-            # keep a single line representative
-            first_line = text.splitlines()[0].strip()
-            if len(first_line) < min_len:
-                continue
-
-            char_sizes: List[float] = []
-            for obj in getattr(box, "_objs", []):
-                if hasattr(obj, "_objs"):
-                    for ch in getattr(obj, "_objs", []):
-                        if isinstance(ch, LTChar):
-                            char_sizes.append(ch.size)
-                elif isinstance(obj, LTChar):
-                    char_sizes.append(obj.size)
-
-            if not char_sizes:
-                continue
-            avg_size = sum(char_sizes) / len(char_sizes)
-            sizes.append(avg_size)
-            y0, y1 = box.y0, box.y1
-            candidates.append((page_no, first_line, avg_size, y1))
-
-    if not candidates:
-        return []
-
-    # Determine thresholds by quantiles
-    sizes_sorted = sorted(sizes)
-    def quantile(q: float) -> float:
-        idx = int(q * (len(sizes_sorted) - 1))
-        return sizes_sorted[idx]
-
-    q70, q85 = quantile(0.70), quantile(0.85)
-
-    # Compute levels: 1 if > q85, 2 if > q70, else 3 (cap to 6 later if needed)
-    for page, text, avg_size, y_top in candidates:
-        base_level = 1 if avg_size >= q85 else (2 if avg_size >= q70 else 3)
-        # boost if close to top of page
-        top_boost = -1 if y_top > 700 else 0  # typical A4 height ~ 842
-        level = max(1, min(6, base_level + top_boost))
-        headings.append(Heading(title=text, page=page, level=level))
-
-    # Sort by page then by level
-    headings.sort(key=lambda h: (h.page, h.level, h.title.lower()))
-    return headings
 
 
 def generate_bookmarks(src_pdf: str, out_pdf: str, headings: Iterable[Heading]) -> None:
@@ -109,3 +34,80 @@ def generate_bookmarks(src_pdf: str, out_pdf: str, headings: Iterable[Heading]) 
 
     with open(out_pdf, "wb") as f:
         writer.write(f)
+
+
+# -------------------- TOC parsing utilities --------------------
+
+_NUM_PREFIX_RE = re.compile(
+    r"^\s*(?P<num>(第\s*\d+[一二三四五六七八九十百千]*[章节节部分编]?)|((\d+\.)+\d+)|\d+)?\s*"
+)
+_TRAILING_PAGE_RE = re.compile(r"(?P<page>\d{1,5})\s*$")
+
+
+def _infer_level_from_numbering(num: Optional[str]) -> int:
+    if not num:
+        return 1
+    num = num.strip()
+    if num.startswith("第"):
+        # "第1章" style => top-level
+        return 1
+    if "." in num:
+        # "1.2.3" => level = segments + 1 (so 1.2 is level 2)
+        return min(6, max(1, num.count(".") + 1))
+    # Simple leading integer like "1" => level 1
+    return 1
+
+
+def parse_toc_lines(toc_text: str, page_offset: int = 0, min_len: int = 1) -> List[Heading]:
+    """
+    Parse a pasted TOC text into Heading entries.
+    - Each line should end with the book page number (digits)
+    - Leading numbering like "第1章" or "1.2" is used to infer the level
+    - page_offset is added to the parsed page number to map to PDF actual pages
+    """
+    headings: List[Heading] = []
+    for raw_line in toc_text.splitlines():
+        line = raw_line.strip()
+        if len(line) < min_len:
+            continue
+        # Detect and temporarily strip leading asterisk marker(s)
+        star_prefix = ""
+        m_star = re.match(r"^\*+\s*", line)
+        if m_star:
+            stars = m_star.group(0)
+            star_count = stars.count("*")
+            star_prefix = ("*" * star_count) + " "
+            line = line[m_star.end() :].lstrip()
+
+        # Extract trailing page digits
+        page_m = _TRAILING_PAGE_RE.search(line)
+        if not page_m:
+            continue
+        page_num = int(page_m.group("page"))
+        # Remove trailing page from the line
+        line_wo_page = line[: page_m.start()].rstrip()
+        # Extract leading numbering if exists
+        num_m = _NUM_PREFIX_RE.match(line_wo_page)
+        numbering = None
+        title_part = line_wo_page
+        if num_m:
+            numbering = num_m.group("num")
+            title_part = line_wo_page[num_m.end() :].strip()
+        # Cleanup title
+        title = re.sub(r"\s+", " ", title_part)
+        if not title:
+            # fallback to raw without numbering
+            title = line_wo_page.strip()
+        # Restore asterisk prefix if present
+        if star_prefix:
+            title = f"{star_prefix}{title}".strip()
+        level = _infer_level_from_numbering(numbering)
+        pdf_page = max(1, page_num + page_offset)
+        headings.append(Heading(title=title, page=pdf_page, level=level))
+
+    # Sort by page then by inferred level
+    headings.sort(key=lambda h: (h.page, h.level, h.title.lower()))
+    return headings
+
+
+## URL/website TOC fetching intentionally removed; only manual text input is supported.

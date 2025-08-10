@@ -1,8 +1,9 @@
 from pathlib import Path
+import re
 
 import pytest
 
-from pdf_bookmark.core import Heading, analyze_pdf_headings, generate_bookmarks
+from pdf_bookmark.core import Heading, generate_bookmarks, parse_toc_lines
 
 
 @pytest.fixture()
@@ -31,8 +32,50 @@ def test_generate_bookmarks_with_headings(tmp_pdf: Path, tmp_path: Path):
     assert out.exists() and out.stat().st_size > 0
 
 
-def test_analyze_handles_empty_pdf(tmp_pdf: Path):
-    # No text, should return empty headings list, not crash
-    hs = analyze_pdf_headings(str(tmp_pdf))
-    assert isinstance(hs, list)
-    assert len(hs) == 0
+def test_no_auto_analysis_copy_only(tmp_pdf: Path):
+    # Without headings, we can still generate a copy
+    from pypdf import PdfReader
+    out = tmp_pdf.with_name("copy.pdf")
+    generate_bookmarks(str(tmp_pdf), str(out), [])
+    r = PdfReader(str(out))
+    assert len(r.pages) == 1
+
+
+def test_parse_toc_lines_basic_offset():
+    toc = """
+    第1章 基础 1
+    1.1 Scala解释器 3
+    1.2 声明值和变量 4
+    2 进阶 10
+    """.strip()
+    hs = parse_toc_lines(toc, page_offset=14)
+    assert [h.page for h in hs] == [15, 17, 18, 24]
+    # Ensure titles exist and have reasonable levels
+    assert hs[0].level == 1
+    assert hs[1].level >= 2
+
+
+def test_parse_toc_lines_robust_trailing_spaces_and_tabs():
+    toc = "\n".join([
+        "第1章   基础\t 1",
+        " 1.1\tScala解释器 \t 3 ",
+        "附录 A  100",
+    ])
+    hs = parse_toc_lines(toc, page_offset=0)
+    assert hs[0].page == 1
+    assert hs[1].page == 3
+    # When no numeric prefix (like "附录 A"), default to level 1
+    assert any(h.title.startswith("附录") and h.level == 1 for h in hs)
+
+
+def test_parse_toc_lines_preserve_asterisk_prefix():
+    toc = "\n".join([
+        "*1.1 subdirectory 12",
+        "* 1.2 another subdirectory 13",
+        "1.3 normal 14",
+    ])
+    hs = parse_toc_lines(toc, page_offset=0)
+    titles = [h.title for h in hs]
+    assert titles[0].startswith("*") and "subdirectory" in titles[0]
+    assert titles[1].startswith("*") and "another subdirectory" in titles[1]
+    assert not titles[2].startswith("*")
